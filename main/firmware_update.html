@@ -1,0 +1,142 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>heltec ota</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width initial-scale=1">
+    <style>
+        h1 {
+            text-align: center;
+            font-size: 3.6rem;
+            color: rgb(0, 0, 0);
+        }
+    </style>
+  
+<body>
+    <table class="fixed" border="0" >
+    <col width="1000px" /><col width="500px" />
+    <tr>
+        <td>
+            <h1>HELTEC OTA Server</h1>
+        </td>
+    </tr>
+        <table border="0">
+            <tr>
+                <td>
+                    <label for="newfirmware">Select a firmware</label>
+                </td>
+                <td colspan="2">
+                    <input id="newfirmware" type="file" onchange="setpath()" style="width:100%;">
+                </td>
+            </tr>
+    <tr>
+        <td>
+            <label for="firmwarepartition">Select upload partition</label>
+        </td>
+        <td colspan="2">
+            <select id="firmwarepartition" name="firmwarepartition">
+                <option value="app0">app0</option>
+                <option value="app1">app1</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <label for="firmwarepath">Set firmware name</label>
+        </td>
+        <td>
+            <input id="firmwarepath" type="text" style="width:100%;">
+        </td>
+        <td>
+            <button id="upload" type="button" onclick="upload()">Upload</button>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <label for="progress">Upload progress</label>
+        </td>
+        <td>
+            <div id="progress" class="progress"></div>
+        </td>
+    </tr>
+
+    </table>
+</table>    
+<script>
+function setpath() {
+    var default_path = document.getElementById("newfirmware").files[0].name;
+    document.getElementById("firmwarepath").value = default_path;
+}
+function getFormattedLocalTime() {
+  var currentTime = new Date();
+
+  var year = currentTime.getFullYear();
+  
+  var month = ("0" + (currentTime.getMonth() + 1)).slice(-2);
+  var day   = ("0" + currentTime.getDate()).slice(-2);
+  var hours = ("0" + currentTime.getHours()).slice(-2);
+  var minutes = ("0" + currentTime.getMinutes()).slice(-2);
+  var seconds = ("0" + currentTime.getSeconds()).slice(-2);
+
+  var formattedTime = year + '-' + month + '-' + day + '.' + hours + ':' + minutes + ':' + seconds;
+  return formattedTime;
+}
+function upload() {
+    var firmwarepath = document.getElementById("firmwarepath").value;
+    var firmware_partition = document.getElementById("firmwarepartition").value;
+    var local_time = getFormattedLocalTime();
+    var upload_path = "/upload/" +firmware_partition+'_' + local_time + '_'+ firmwarepath;
+    var fileInput = document.getElementById("newfirmware").files;
+
+    var MAX_FILE_SIZE = 2048*1024;
+    var MAX_FILE_SIZE_STR = "2MB";
+
+    if (fileInput.length == 0) {
+        alert("No firmware selected!");
+    } else if (firmwarepath.length == 0) {
+        alert("Firmware name on server is not set!");
+    } else if (firmwarepath.indexOf(' ') >= 0) {
+        alert("Firmware name on server cannot have spaces!");
+    } else if (firmwarepath[firmwarepath.length-1] == '/') {
+        alert("Firmware name not specified after path!");
+    } else if (fileInput[0].size > MAX_FILE_SIZE) {
+        alert("Firmware size must be less than 2MB!");
+    } else {
+        document.getElementById("newfirmware").disabled = true;
+        document.getElementById("firmwarepath").disabled = true;
+        document.getElementById("upload").disabled = true;
+
+        var file = fileInput[0];
+        var xhttp = new XMLHttpRequest();
+
+        xhttp.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+            var percent = Math.round((e.loaded / e.total) * 100);
+            document.getElementById("progress").textContent = percent + "%";
+            }
+        };
+
+        xhttp.onreadystatechange = function() {
+            if (xhttp.readyState == 4) {
+                if (xhttp.status == 200) {
+                    document.open();
+                    document.write(xhttp.responseText);
+                    document.close();
+                } else if (xhttp.status == 0) {
+                    alert("Server closed the connection abruptly!");
+                    location.reload()
+                } else {
+                    alert(xhttp.status + " Error!\n" + xhttp.responseText);
+                    location.reload()
+                }
+            }
+        };
+        xhttp.open("POST", upload_path, true);
+        xhttp.send(file);
+    }
+}
+</script>
+<table id="info_table" class="fixed" border="1">
+<thead><tr><th>Partition Name</th><th>Partition Size (Bytes)</th><th>Firmware Name</th><th>Firmware size(Bytes)</th><th>Firmware upload date</th><th>Run This Firmware</th><th>Erase This Partition</th></tr></thead><tbody>
+
